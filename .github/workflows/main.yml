@@ -9,13 +9,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
+    - name: Install WASM tools
+      run: |
+        curl -LO 'https://github.com/WebAssembly/binaryen/releases/download/version_108/binaryen-version_108-x86_64-linux.tar.gz'
+        tar zxvf binaryen-version_108-x86_64-linux.tar.gz
     - uses: goto-bus-stop/setup-zig@v1
       with:
         version: master
     - name: Build
-      run: zig build
+      run: zig build -Drelease-small=true
+    - name: Optimize
+      run: binaryen-version_108/bin/wasm-opt -Oz --strip --dce --zero-filled-memory zig-out/lib/cart.wasm -o cart.wasm
     - name: Upload artifact
       uses: actions/upload-artifact@master
       with:
         name: cart.wasm
-        path: zig-out/lib/cart.wasm
+        path: cart.wasm
