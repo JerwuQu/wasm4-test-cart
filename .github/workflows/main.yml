@@ -17,7 +17,7 @@ jobs:
       with:
         version: master
     - name: Build
-      run: zig build -Drelease-small=true
+      run: zig build
     - name: Optimize
       run: binaryen-version_108/bin/wasm-opt -Oz --strip --dce --zero-filled-memory zig-out/lib/cart.wasm -o cart.wasm
     - name: Upload artifact

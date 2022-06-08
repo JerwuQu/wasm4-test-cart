@@ -1,20 +1,10 @@
 const std = @import("std");
 
 pub fn build(b: *std.build.Builder) !void {
-    const mode = b.standardReleaseOptions();
-
-    const exe = b.addExecutable("generator", "generator/main.zig");
-    exe.addPackagePath("tester", "shared/tester.zig");
-    exe.setBuildMode(mode);
-    exe.setTarget(b.standardTargetOptions(.{}));
-    exe.linkLibC();
-    exe.addIncludePath("./generator/wasm4-native");
-    const exeRun = exe.run();
-
-    const lib = b.addSharedLibrary("cart", "cart/main.zig", .unversioned);
-    lib.addPackagePath("tester", "shared/tester.zig");
-    lib.step.dependOn(&exeRun.step);
-    lib.setBuildMode(mode);
+    const lib = b.addSharedLibrary("cart", "src/main.zig", .unversioned);
+    lib.linkLibC();
+    lib.addIncludePath("./wasm4-native");
+    lib.setBuildMode(.ReleaseSmall);
     lib.setTarget(.{ .cpu_arch = .wasm32, .os_tag = .freestanding });
     lib.import_memory = true;
     lib.initial_memory = 65536;
