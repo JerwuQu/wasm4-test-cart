@@ -1,0 +1,21 @@
+name: CI
+
+on:
+  push:
+    branches: [ "master" ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - uses: goto-bus-stop/setup-zig@v1
+      with:
+        version: master
+    - name: Build
+      run: zig build
+    - name: Upload artifact
+      uses: actions/upload-artifact@master
+      with:
+        name: cart.wasm
+        path: zig-out/lib/cart.wasm
