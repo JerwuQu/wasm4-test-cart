@@ -1,7 +1,7 @@
 const w4Native = @cImport({
     @cInclude("framebuffer.c");
 });
-const tester = @import("tester.zig");
+const tester = @import("tester");
 const std = @import("std");
 
 var _FRAMEBUFFER: [6400]u8 = undefined;
