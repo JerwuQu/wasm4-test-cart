@@ -3,6 +3,7 @@ const tester = @import("main.zig");
 fn testHelloWorld(w4: anytype) void {
     w4.DRAW_COLORS.* = 2;
     w4.text("Hello from Zig!", 10, 10);
+    w4.text("Hello from Zig!", w4.SCREEN_SIZE, 10);
 }
 
 fn testLongString(w4: anytype) void {
