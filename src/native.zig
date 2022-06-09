@@ -3,7 +3,7 @@ const fbC = @cImport({
 });
 
 var _FRAMEBUFFER: [6400]u8 = undefined;
-var _DRAW_COLORS: u8 = 0;
+var _DRAW_COLORS: u16 = 0;
 
 pub const w4 = struct {
     pub const SCREEN_SIZE: u32 = 160;
@@ -15,7 +15,7 @@ pub const w4 = struct {
     pub const BLIT_ROTATE: u32 = 8;
 
     pub const FRAMEBUFFER: *[6400]u8 = &_FRAMEBUFFER;
-    pub const DRAW_COLORS: *u8 = &_DRAW_COLORS;
+    pub const DRAW_COLORS: *u16 = &_DRAW_COLORS;
 
     pub fn hline(x: i32, y: i32, len: u32) void {
         fbC.w4_framebufferHLine(x, y, len);
@@ -56,6 +56,6 @@ pub const w4 = struct {
 };
 
 pub fn init() void {
-    fbC.w4_framebufferInit(w4.DRAW_COLORS, w4.FRAMEBUFFER);
+    fbC.w4_framebufferInit(@ptrCast([*c]const u8, w4.DRAW_COLORS), w4.FRAMEBUFFER);
     fbC.w4_framebufferClear();
 }

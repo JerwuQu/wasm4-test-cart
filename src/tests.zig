@@ -1,17 +1,40 @@
 const tester = @import("main.zig");
 
-fn testHelloWorld(w4: anytype) void {
-    w4.DRAW_COLORS.* = 2;
-    w4.text("Hello from Zig!", 10, 10);
-    w4.text("Hello from Zig!", w4.SCREEN_SIZE, 10);
+fn texts(w4: anytype) void {
+    var i: i32 = -160;
+    while (i < 320) : (i += 1) {
+        w4.text("A VERY VERY VERY VERY VERY VERY VERY VERY LONG TEXT", i, 30);
+        w4.text("A VERY VERY VERY VERY VERY VERY VERY VERY LONG TEXT", 30, i);
+        w4.text("A VERY VERY VERY VERY VERY VERY VERY VERY LONG TEXT", i, i);
+        suspend {}
+        tester.testTrace("Ayo", .{});
+    }
 }
 
-fn testLongString(w4: anytype) void {
-    w4.DRAW_COLORS.* = 3;
-    w4.text("A VERY VERY VERY VERY VERY VERY VERY VERY LONG TEXT", -10, 10);
+fn rects(w4: anytype) void {
+    var i: i32 = -160;
+    while (i < 320) : (i += 1) {
+        w4.rect(i, i, 10, 10);
+        w4.rect(i, i, 32, 32);
+        w4.rect(i, i, 1000, 3);
+        w4.rect(i, i, 3, 1000);
+        suspend {}
+    }
+}
+
+fn ovals(w4: anytype) void {
+    var i: i32 = -160;
+    while (i < 320) : (i += 1) {
+        w4.oval(i, i, 10, 10);
+        w4.oval(i, i, 32, 32);
+        w4.oval(i, i, 1000, 3);
+        w4.oval(i, i, 3, 1000);
+        suspend {}
+    }
 }
 
 pub fn run() void {
-    tester.addTest(testHelloWorld, "Hello World");
-    tester.addTest(testLongString, "Long String");
+    tester.addTest(texts, "Texts");
+    tester.addTest(ovals, "Rects");
+    tester.addTest(ovals, "Ovals");
 }
