@@ -4,11 +4,14 @@ const nativeW4 = @import("native.zig");
 
 pub var passed: u8 = 0;
 pub var failed: u8 = 0;
+pub var suspendOnFail = false;
+pub var suspendFrame: ?anyframe = undefined;
 
 pub fn init() void {
     passed = 0;
     failed = 0;
     nativeW4.init();
+    clear();
 }
 
 pub fn clear() void {
@@ -16,17 +19,31 @@ pub fn clear() void {
     std.mem.set(u8, nativeW4.FRAMEBUFFER, 0);
 }
 
-pub fn assert(comptime src: std.builtin.SourceLocation, extra: usize) void {
-    if (std.mem.eql(u8, w4.FRAMEBUFFER, nativeW4.FRAMEBUFFER)) {
-        passed += 1;
+pub fn assert(src: std.builtin.SourceLocation, extra: usize) void {
+    const match = std.mem.eql(u8, w4.FRAMEBUFFER, nativeW4.FRAMEBUFFER);
+    if (suspendOnFail) {
+        if (!match) {
+            w4.tracef("Inspecting failed test: %s:%d (%d)", src.fn_name.ptr, src.line, extra);
+            w4.trace("- Showing WASM-4 API result");
+            suspend {
+                suspendFrame = @frame();
+            }
+            w4.trace("- Showing native WASM-4 runtime result");
+            std.mem.copy(u8, w4.FRAMEBUFFER, nativeW4.FRAMEBUFFER);
+            suspend {
+                suspendFrame = @frame();
+            }
+            w4.trace("Moving on...");
+            suspendFrame = null;
+        }
     } else {
-        w4.tracef("!!! Failed: " ++ src.fn_name ++ " (%d)", extra);
-        failed += 1;
+        if (match) {
+            passed += 1;
+        } else {
+            w4.tracef("!!! Failed: %s:%d (%d)", src.fn_name.ptr, src.line, extra);
+            failed += 1;
+        }
     }
-}
-
-pub fn assertClear(comptime src: std.builtin.SourceLocation, extra: usize) void {
-    assert(src, extra);
     clear();
 }
 
