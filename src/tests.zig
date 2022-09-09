@@ -1,17 +1,24 @@
-const tester = @import("main.zig");
+const w4 = @import("wasm4.zig");
+const tester = @import("tester.zig");
 
-fn testHelloWorld(w4: anytype) void {
-    w4.DRAW_COLORS.* = 2;
-    w4.text("Hello from Zig!", 10, 10);
-    w4.text("Hello from Zig!", w4.SCREEN_SIZE, 10);
-}
+fn testTexts() void {
+    tester.setDrawColors(4);
 
-fn testLongString(w4: anytype) void {
-    w4.DRAW_COLORS.* = 3;
-    w4.text("A VERY VERY VERY VERY VERY VERY VERY VERY LONG TEXT", -10, 10);
+    tester.text("Hello from Zig!", 10, 10);
+    tester.text("Hello from Zig!", w4.SCREEN_SIZE, 10);
+    tester.assertClear(@src(), 0);
+
+    tester.text("A VERY VERY VERY VERY VERY\nVERY VERY VERY LONG TEXT", -10, 10);
+    tester.assertClear(@src(), 0);
+
+    var buf: [1]u8 = undefined;
+    buf[0] = 0;
+    while (buf[0] < 255) : (buf[0] += 1) {
+        tester.text(&buf, 10, 10);
+        tester.assertClear(@src(), buf[0]);
+    }
 }
 
 pub fn run() void {
-    tester.addTest(testHelloWorld, "Hello World");
-    tester.addTest(testLongString, "Long String");
+    testTexts();
 }

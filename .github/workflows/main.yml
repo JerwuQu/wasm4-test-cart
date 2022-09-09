@@ -17,7 +17,7 @@ jobs:
       with:
         version: master
     - name: Build
-      run: zig build
+      run: zig build -fstage1 # TODO: stage3 once #12702 is fixed
     - name: Optimize
       run: binaryen-version_108/bin/wasm-opt -Oz --strip --dce --zero-filled-memory zig-out/lib/cart.wasm -o cart.wasm
     - name: Upload artifact
