@@ -1,7 +1,7 @@
 const w4 = @import("wasm4.zig");
 const fbC = @cImport({
-    @cInclude("native/memset.c");
-    @cInclude("native/framebuffer.c");
+    @cInclude("native_fb/memset.c");
+    @cInclude("native_fb/framebuffer.c");
 });
 
 var _FRAMEBUFFER: [6400]u8 = undefined;
