@@ -1,4 +1,4 @@
-# gfx-test-cart
+# wasm4-test-cart
 
 A [WASM-4](https://wasm4.org) runtime implementation checker.
 
@@ -13,11 +13,11 @@ zig build
 Then run it with:
 
 ```shell
-w4 run zig-out/lib/cart.wasm
+w4 run zig-out/cart.opt.wasm
 # or
-w4 run-native zig-out/lib/cart.wasm
+w4 run-native zig-out/cart.opt.wasm
 # or
-your-runtime zig-out/lib/cart.wasm
+your-runtime zig-out/cart.opt.wasm
 ```
 
 ## Links
