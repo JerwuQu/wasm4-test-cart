@@ -11,17 +11,15 @@ jobs:
     - uses: actions/checkout@v3
       with:
         submodules: recursive
-    - name: Install WASM tools
+    - name: Get Binaryen
       run: |
-        curl -LO 'https://github.com/WebAssembly/binaryen/releases/download/version_108/binaryen-version_108-x86_64-linux.tar.gz'
-        tar zxvf binaryen-version_108-x86_64-linux.tar.gz
+        curl -LO 'https://github.com/WebAssembly/binaryen/releases/download/version_109/binaryen-version_109-x86_64-linux.tar.gz'
+        tar zxvf binaryen-version_109-x86_64-linux.tar.gz
     - uses: goto-bus-stop/setup-zig@v1
       with:
         version: master
     - name: Build
-      run: zig build
-    - name: Optimize
-      run: binaryen-version_108/bin/wasm-opt -Oz --strip --dce --zero-filled-memory zig-out/lib/cart.wasm -o cart.wasm
+      run: PATH="$PATH:$(pwd)/binaryen-version_109/bin" zig build
     - name: Upload artifact
       uses: actions/upload-artifact@master
       with:
