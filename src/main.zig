@@ -3,37 +3,51 @@ const w4 = @import("wasm4.zig");
 const crt = @import("crt/crt.zig");
 const fb_both = @import("fb_both.zig");
 
+const TERM_COLOR_RESET = "\x1b[0m";
+const TERM_COLOR_RED = "\x1b[31m";
+const TERM_COLOR_GREEN = "\x1b[32m";
+const TERM_COLOR_YELLOW = "\x1b[33m";
+const TERM_COLOR_BLUE = "\x1b[34m";
+
 // Cookie used to detect memory corruption - See build.zig
 const COOKIE = 0x0F1E2D3C;
 const memoryStartCookiePtr = @intToPtr(*volatile u32, 6560);
 
-var testState = struct {
+var fmtbuf: [128]u8 = undefined;
+
+const Test = struct {
+    name: []const u8,
+    func: *const fn() void,
+};
+
+const TestState = struct {
+    tst: *const Test,
     passed: usize = 0,
     failed: usize = 0,
-}{};
+};
 
-var fmtbuf: [128]u8 = undefined;
+var currentTest: *TestState = undefined;
 
 fn bufPrintZ(comptime fmt: []const u8, args: anytype) []u8 {
     return std.fmt.bufPrintZ(&fmtbuf, fmt, args) catch unreachable;
 }
 
-fn assertFailed(ctx: []const u8, comptime src: std.builtin.SourceLocation) void {
+fn assertFailed(ctx: []const u8) void {
     const ctxPtr = if (ctx.len == 0) "<unnamed>" else ctx.ptr;
-    w4.tracef("!!! Failed assertion: %s (in %s, file line %d)", ctxPtr, src.fn_name.ptr, src.line);
-    testState.failed += 1;
+    w4.tracef(TERM_COLOR_RED ++ "- Failed assertion: %s", ctxPtr);
+    currentTest.failed += 1;
 }
 
-fn assert(condition: bool, ctx: []const u8, comptime src: std.builtin.SourceLocation) void {
+fn assert(condition: bool, ctx: []const u8) void {
     if (condition) {
-        testState.passed += 1;
+        currentTest.passed += 1;
     } else {
-        assertFailed(ctx, src);
+        assertFailed(ctx);
     }
 }
 
-fn assertEqualFBs(ctx: []const u8, comptime src: std.builtin.SourceLocation) void {
-    assert(std.mem.eql(u8, w4.FRAMEBUFFER, crt.FRAMEBUFFER), ctx, src);
+fn assertEqualFBs(ctx: []const u8) void {
+    assert(std.mem.eql(u8, w4.FRAMEBUFFER, crt.FRAMEBUFFER), ctx);
     std.mem.set(u8, w4.FRAMEBUFFER, 0);
     std.mem.set(u8, crt.FRAMEBUFFER, 0);
 }
@@ -41,19 +55,19 @@ fn assertEqualFBs(ctx: []const u8, comptime src: std.builtin.SourceLocation) voi
 // Test initial memory state
 fn test_initial_memory() void {
     // PALETTE
-    assert(w4.PALETTE[0] == 0xe0f8cf, "", @src());
-    assert(w4.PALETTE[1] == 0x86c06c, "", @src());
-    assert(w4.PALETTE[2] == 0x306850, "", @src());
-    assert(w4.PALETTE[3] == 0x071821, "", @src());
+    assert(w4.PALETTE[0] == 0xe0f8cf, "");
+    assert(w4.PALETTE[1] == 0x86c06c, "");
+    assert(w4.PALETTE[2] == 0x306850, "");
+    assert(w4.PALETTE[3] == 0x071821, "");
 
     // DRAW_COLORS
-    assert(w4.DRAW_COLORS.* == 0x1203, "", @src());
+    assert(w4.DRAW_COLORS.* == 0x1203, "");
 
     // SYSTEM_FLAGS
-    assert(w4.SYSTEM_FLAGS.* == 0, "", @src());
+    assert(w4.SYSTEM_FLAGS.* == 0, "");
 
     // FRAMEBUFFER
-    assert(std.mem.allEqual(u8, w4.FRAMEBUFFER, 0), "", @src());
+    assert(std.mem.allEqual(u8, w4.FRAMEBUFFER, 0), "");
 }
 
 // Test disk capabilities
@@ -72,12 +86,12 @@ fn test_disk() void {
 
         std.mem.set(u8, &bufIn, BYTE_UNUSED_IN);
         bufIn[0] = BYTE_COPIED;
-        assert(w4.diskw(&bufIn, 1) == 1, case, @src());
+        assert(w4.diskw(&bufIn, 1) == 1, case);
 
         std.mem.set(u8, &bufOut, BYTE_UNUSED_OUT);
-        assert(w4.diskr(&bufOut, DISK_MAX) == 1, case, @src());
-        assert(bufOut[0] == BYTE_COPIED, case, @src());
-        assert(std.mem.allEqual(u8, bufOut[1..], BYTE_UNUSED_OUT), case, @src());
+        assert(w4.diskr(&bufOut, DISK_MAX) == 1, case);
+        assert(bufOut[0] == BYTE_COPIED, case);
+        assert(std.mem.allEqual(u8, bufOut[1..], BYTE_UNUSED_OUT), case);
     }
 
     {
@@ -85,24 +99,24 @@ fn test_disk() void {
 
         std.mem.set(u8, bufIn[0..DISK_MAX], BYTE_COPIED);
         std.mem.set(u8, bufIn[DISK_MAX..], BYTE_UNUSED_IN);
-        assert(w4.diskw(&bufIn, DISK_MAX) == DISK_MAX, case, @src());
+        assert(w4.diskw(&bufIn, DISK_MAX) == DISK_MAX, case);
 
         std.mem.set(u8, &bufOut, BYTE_UNUSED_OUT);
-        assert(w4.diskr(&bufOut, DISK_MAX) == DISK_MAX, case, @src());
-        assert(std.mem.allEqual(u8, bufOut[0..DISK_MAX], BYTE_COPIED), case, @src());
-        assert(std.mem.allEqual(u8, bufOut[DISK_MAX..], BYTE_UNUSED_OUT), case, @src());
+        assert(w4.diskr(&bufOut, DISK_MAX) == DISK_MAX, case);
+        assert(std.mem.allEqual(u8, bufOut[0..DISK_MAX], BYTE_COPIED), case);
+        assert(std.mem.allEqual(u8, bufOut[DISK_MAX..], BYTE_UNUSED_OUT), case);
     }
 
     {
         const case = "disk: oversized (2048)";
 
         std.mem.set(u8, &bufIn, BYTE_COPIED);
-        assert(w4.diskw(&bufIn, DISK_MAX_2) == DISK_MAX, case, @src());
+        assert(w4.diskw(&bufIn, DISK_MAX_2) == DISK_MAX, case);
 
         std.mem.set(u8, &bufOut, BYTE_UNUSED_OUT);
-        assert(w4.diskr(&bufOut, DISK_MAX_2) == DISK_MAX, case, @src());
-        assert(std.mem.allEqual(u8, bufOut[0..DISK_MAX], BYTE_COPIED), case, @src());
-        assert(std.mem.allEqual(u8, bufOut[DISK_MAX..], BYTE_UNUSED_OUT), case, @src());
+        assert(w4.diskr(&bufOut, DISK_MAX_2) == DISK_MAX, case);
+        assert(std.mem.allEqual(u8, bufOut[0..DISK_MAX], BYTE_COPIED), case);
+        assert(std.mem.allEqual(u8, bufOut[DISK_MAX..], BYTE_UNUSED_OUT), case);
     }
 }
 
@@ -110,18 +124,18 @@ fn test_draw_init() void {
     crt.init();
 
     // FRAMEBUFFER empty
-    assert(std.mem.allEqual(u8, w4.FRAMEBUFFER, 0), "", @src());
+    assert(std.mem.allEqual(u8, w4.FRAMEBUFFER, 0), "");
 
     // Manual set (aka. verify mutability)
     std.mem.set(u8, w4.FRAMEBUFFER, 0xAA);
     std.mem.set(u8, crt.FRAMEBUFFER, 0xAA);
-    assertEqualFBs("FRAMEBUFFER empty on init", @src());
+    assertEqualFBs("FRAMEBUFFER empty on init");
 
     // See that FRAMEBUFFER isn't modified by DRAW_COLORS
     std.mem.set(u8, w4.FRAMEBUFFER, 0xAA);
     std.mem.set(u8, crt.FRAMEBUFFER, 0xAA);
     fb_both.DRAW_COLORS(0x1234);
-    assertEqualFBs("FRAMEBUFFER modified by DRAW_COLORS", @src());
+    assertEqualFBs("FRAMEBUFFER modified by DRAW_COLORS");
 }
 
 fn test_draw_primitives() void {
@@ -145,7 +159,7 @@ fn test_draw_primitives() void {
                     const y2 = positions[y2i];
                     fb_both.DRAW_COLORS(0x34);
                     fb_both.line(x, y, x2, y2);
-                    assertEqualFBs(bufPrintZ("line: {},{} to {},{}", .{x, y, x2, y2}), @src());
+                    assertEqualFBs(bufPrintZ("line: {},{} to {},{}", .{x, y, x2, y2}));
                 }
             }
 
@@ -156,9 +170,9 @@ fn test_draw_primitives() void {
 
                 fb_both.DRAW_COLORS(0x34);
                 fb_both.hline(x, y, w);
-                assertEqualFBs(bufPrintZ("hline: {},{} len {}", .{x, y, w}), @src());
+                assertEqualFBs(bufPrintZ("hline: {},{} len {}", .{x, y, w}));
                 fb_both.vline(x, y, w);
-                assertEqualFBs(bufPrintZ("vline: {},{} len {}", .{x, y, w}), @src());
+                assertEqualFBs(bufPrintZ("vline: {},{} len {}", .{x, y, w}));
 
                 var hi: usize = 0;
                 while (hi < sizes.len) : (hi += 1) {
@@ -166,15 +180,15 @@ fn test_draw_primitives() void {
 
                     fb_both.DRAW_COLORS(0x4);
                     fb_both.rect(x, y, w, h);
-                    assertEqualFBs(bufPrintZ("rect: {},{} {}x{}", .{x, y, w, h}), @src());
+                    assertEqualFBs(bufPrintZ("rect: {},{} {}x{}", .{x, y, w, h}));
                     fb_both.oval(x, y, w, h);
-                    assertEqualFBs(bufPrintZ("oval: {},{} {}x{}", .{x, y, w, h}), @src());
+                    assertEqualFBs(bufPrintZ("oval: {},{} {}x{}", .{x, y, w, h}));
 
                     fb_both.DRAW_COLORS(0x34);
                     fb_both.rect(x, y, w, h);
-                    assertEqualFBs(bufPrintZ("rect (outlined): {},{} {}x{}", .{x, y, w, h}), @src());
+                    assertEqualFBs(bufPrintZ("rect (outlined): {},{} {}x{}", .{x, y, w, h}));
                     fb_both.oval(x, y, w, h);
-                    assertEqualFBs(bufPrintZ("oval (outlined): {},{} {}x{}", .{x, y, w, h}), @src());
+                    assertEqualFBs(bufPrintZ("oval (outlined): {},{} {}x{}", .{x, y, w, h}));
                 }
             }
         }
@@ -196,29 +210,29 @@ fn test_draw_text() void {
             text8Buf[0] = @intCast(u8, i);
             text16Buf[0] = @intCast(u16, i);
             fb_both.text(&text8Buf, 10, 10);
-            assertEqualFBs(bufPrintZ("text: charcode {}", .{i}), @src());
+            assertEqualFBs(bufPrintZ("text: charcode {}", .{i}));
             fb_both.textUtf8(text8Buf[0..1], 10, 10);
-            assertEqualFBs(bufPrintZ("textUtf8: charcode {}", .{i}), @src());
+            assertEqualFBs(bufPrintZ("textUtf8: charcode {}", .{i}));
             fb_both.textUtf16(text16Buf[0..1], 10, 10);
-            assertEqualFBs(bufPrintZ("textUtf16: charcode {}", .{i}), @src());
+            assertEqualFBs(bufPrintZ("textUtf16: charcode {}", .{i}));
         }
     }
 
     // text, textUtf8, textUtf16: newline
     fb_both.text("A\nB", 10, 10);
-    assertEqualFBs("text: newline", @src());
+    assertEqualFBs("text: newline");
     fb_both.textUtf8("A\nB", 10, 10);
-    assertEqualFBs("textUtf8: newline", @src());
+    assertEqualFBs("textUtf8: newline");
     fb_both.textUtf16(&[3]u16{ 'A', '\n', 'B' }, 10, 10);
-    assertEqualFBs("textUtf16: newline", @src());
+    assertEqualFBs("textUtf16: newline");
 
     // text, textUtf8, textUtf16: respect null-terminator
     fb_both.text("A\x00B", 10, 10);
-    assertEqualFBs("text: respect null-terminator", @src());
+    assertEqualFBs("text: respect null-terminator");
     fb_both.textUtf8("A\x00B", 10, 10);
-    assertEqualFBs("textUtf8: respect null-terminator", @src());
+    assertEqualFBs("textUtf8: respect null-terminator");
     fb_both.textUtf16(&[3]u16{ 'A', 0, 'B' }, 10, 10);
-    assertEqualFBs("textUtf16: respect null-terminator", @src());
+    assertEqualFBs("textUtf16: respect null-terminator");
 
     // text, textUtf8, textUtf16: all charcodes, \n wrapping
     {
@@ -237,29 +251,29 @@ fn test_draw_text() void {
             }
         }
         fb_both.text(&text8Buf, 10, 10);
-        assertEqualFBs("text: all charcodes, wrapped", @src());
+        assertEqualFBs("text: all charcodes, wrapped");
         fb_both.textUtf8(text8Buf[0..ai], 10, 10);
-        assertEqualFBs("textUtf8: all charcodes, wrapped", @src());
+        assertEqualFBs("textUtf8: all charcodes, wrapped");
         fb_both.textUtf16(text16Buf[0..ai], 10, 10);
-        assertEqualFBs("textUtf16: all charcodes, wrapped", @src());
+        assertEqualFBs("textUtf16: all charcodes, wrapped");
     }
 
     // text: OOB placements
     fb_both.text("@@@@@", -4, -4);
-    assertEqualFBs("text: OOB", @src());
+    assertEqualFBs("text: OOB");
     fb_both.text("@@@@@", 156, -4);
-    assertEqualFBs("text: OOB", @src());
+    assertEqualFBs("text: OOB");
     fb_both.text("@@@@@", -4, 156);
-    assertEqualFBs("text: OOB", @src());
+    assertEqualFBs("text: OOB");
     fb_both.text("@@@@@", 156, 156);
-    assertEqualFBs("text: OOB", @src());
+    assertEqualFBs("text: OOB");
 
     // textUtf16, invalid charcodes
     {
         var i: usize = 256;
         while (i < 65536) : (i += 2251) {
             w4.textUtf16(&[2]u16{ @intCast(u16, i), 0 }, 2, 10, 10);
-            assertEqualFBs(bufPrintZ("textUtf16: invalid charcode {}", .{i}), @src());
+            assertEqualFBs(bufPrintZ("textUtf16: invalid charcode {}", .{i}));
         }
     }
 }
@@ -279,29 +293,55 @@ fn test_update_persistance() void {
 export fn start() void {
     memoryStartCookiePtr.* = COOKIE;
 
-    w4.trace("Test suite started");
+    w4.trace(TERM_COLOR_BLUE ++ "Test suite starting..." ++ TERM_COLOR_RESET);
 
-    test_initial_memory();
-    test_disk();
-    test_draw_init();
-    test_draw_primitives();
-    test_draw_text();
-    test_draw_blit();
-    test_update_persistance();
-
-    w4.trace("Test suite finished!");
-    if (memoryStartCookiePtr.* == COOKIE) {
-        w4.tracef("Passed: %d", testState.passed);
-        w4.tracef("Failed: %d", testState.failed);
-
-        if (testState.failed == 0) {
-            w4.PALETTE[0] = 0x88ff88;
-        } else {
-            w4.PALETTE[0] = 0xff8888;
+    const tests: []const Test = comptime blk: {
+        const this: std.builtin.Type.Struct = @typeInfo(@This()).Struct;
+        var tests: []const Test = &.{};
+        for (this.decls) |decl| {
+            if (std.mem.startsWith(u8, decl.name, "test_")) {
+                tests = tests ++ [_]Test{.{
+                    .name = decl.name,
+                    .func = @field(@This(), decl.name),
+                }};
+            }
         }
-    } else {
-        w4.trace("Memory corrupted!");
+        break :blk tests;
+    };
+
+    var testStates: [tests.len]TestState = undefined;
+    var totalPassed: usize = 0;
+    var totalFailed: usize = 0;
+    for (tests) |*tst, i| {
+        testStates[i] = TestState{.tst = tst};
+        currentTest = &testStates[i];
+        w4.tracef(TERM_COLOR_YELLOW ++ "> %s..." ++ TERM_COLOR_RESET, tst.name.ptr);
+        tst.func();
+        totalPassed += currentTest.passed;
+        totalFailed += currentTest.failed;
+    }
+
+    w4.trace(TERM_COLOR_BLUE ++ "Test suite finished!" ++ TERM_COLOR_RESET);
+    if (memoryStartCookiePtr.* != COOKIE) {
+        w4.trace(TERM_COLOR_RED ++ "Memory corrupted!" ++ TERM_COLOR_RESET);
         w4.PALETTE[0] = 0xff0000;
+        return;
+    }
+
+    w4.tracef("Summary:");
+    for (testStates) |state| {
+        if (state.failed == 0) {
+            w4.tracef("- %s: " ++ TERM_COLOR_GREEN ++ "OK!" ++ TERM_COLOR_RESET ++ " (%d passed)", state.tst.name.ptr, state.passed);
+        } else {
+            w4.tracef("- %s: " ++ TERM_COLOR_RED ++ "Failed!" ++ TERM_COLOR_RESET ++ " (%d passed, %d failed)", state.tst.name.ptr, state.passed, state.failed);
+        }
+    }
+    if (totalFailed == 0) {
+        w4.PALETTE[0] = 0x88ff88;
+        w4.tracef(TERM_COLOR_GREEN ++ "OK!" ++ TERM_COLOR_RESET ++ " (%d passed)", totalPassed);
+    } else {
+        w4.PALETTE[0] = 0xff8888;
+        w4.tracef(TERM_COLOR_RED ++ "Failed!" ++ TERM_COLOR_RESET ++ " (%d passed, %d failed)", totalPassed, totalFailed);
     }
 }
 
