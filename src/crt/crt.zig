@@ -54,9 +54,9 @@ pub fn blit(sprite: [*]const u8, x: i32, y: i32, width: u32, height: u32, flags:
 
 pub fn blitSub(sprite: [*]const u8, x: i32, y: i32, width: u32, height: u32, src_x: u32, src_y: u32, stride: u32, flags: u32) void {
     // https://github.com/aduros/wasm4/blob/1a8b9dedaeae3258f0c68134f9c377bb2b89682d/runtimes/native/src/runtime.c#L80
-    const bpp2: bool = (flags & w4.BLIT_2BPP);
-    const flipX: bool = (flags & w4.BLIT_FLIP_X);
-    const flipY: bool = (flags & w4.BLIT_FLIP_Y);
-    const rotate: bool = (flags & w4.BLIT_ROTATE);
-    fbC.w4_framebufferBlit(sprite, x, y, @intCast(c_int, width), @intCast(c_int, height), src_x, src_y, @intCast(c_int, stride), bpp2, flipX, flipY, rotate);
+    const bpp2: bool = (flags & w4.BLIT_2BPP) != 0;
+    const flipX: bool = (flags & w4.BLIT_FLIP_X) != 0;
+    const flipY: bool = (flags & w4.BLIT_FLIP_Y) != 0;
+    const rotate: bool = (flags & w4.BLIT_ROTATE) != 0;
+    fbC.w4_framebufferBlit(sprite, x, y, @intCast(c_int, width), @intCast(c_int, height), @intCast(c_int, src_x), @intCast(c_int, src_y), @intCast(c_int, stride), bpp2, flipX, flipY, rotate);
 }

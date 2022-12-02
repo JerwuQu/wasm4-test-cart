@@ -48,6 +48,7 @@ fn assert(condition: bool, ctx: []const u8) void {
 
 fn assertEqualFBs(ctx: []const u8) void {
     assert(std.mem.eql(u8, w4.FRAMEBUFFER, crt.FRAMEBUFFER), ctx);
+    // TODO: add ability to inspect failed tests visually
     std.mem.set(u8, w4.FRAMEBUFFER, 0);
     std.mem.set(u8, crt.FRAMEBUFFER, 0);
 }
@@ -288,7 +289,38 @@ fn test_draw_text() void {
 }
 
 fn test_draw_blit() void {
-    // TODO: blit
+    const smiley_1bpp = [8]u8{
+        0b11000011,
+        0b10000001,
+        0b00100100,
+        0b00100100,
+        0b00000000,
+        0b00100100,
+        0b10011001,
+        0b11000011,
+    };
+
+    fb_both.DRAW_COLORS(0x34);
+
+    const blitFlagCombos = [_]u32{
+        0,
+        w4.BLIT_FLIP_X,
+        w4.BLIT_FLIP_Y,
+        w4.BLIT_FLIP_X | w4.BLIT_FLIP_Y,
+        w4.BLIT_ROTATE,
+        w4.BLIT_ROTATE | w4.BLIT_FLIP_X,
+        w4.BLIT_ROTATE | w4.BLIT_FLIP_Y,
+        w4.BLIT_ROTATE | w4.BLIT_FLIP_X | w4.BLIT_FLIP_Y,
+    };
+
+    for (blitFlagCombos) |flags| {
+        fb_both.blit(&smiley_1bpp, 10, 10, 8, 8, w4.BLIT_1BPP | flags);
+        assertEqualFBs(bufPrintZ("blit: 1bpp basic, flags: {}", .{flags}));
+        fb_both.blit(&smiley_1bpp, 10, 10, 3, 3, w4.BLIT_1BPP | flags);
+        assertEqualFBs(bufPrintZ("blit: 1bpp unaligned, flags: {}", .{flags}));
+    }
+
+    // TODO: blit 2bpp
     // TODO: blitSub
 }
 
