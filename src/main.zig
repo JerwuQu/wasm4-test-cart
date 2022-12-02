@@ -68,6 +68,15 @@ fn test_initial_memory() void {
 
     // FRAMEBUFFER
     assert(std.mem.allEqual(u8, w4.FRAMEBUFFER, 0), "empty initial FRAMEBUFFER");
+
+    // User-memory (mostly) empty
+    // NOTE: We can't actually check the whole memory because this test cart will import some itself
+    //       Instead, we only check the last 32 KB
+    {
+        const SZ = 65536;
+        const START = 32768;
+        assert(std.mem.allEqual(u8, @intToPtr([*]u8, START)[0..SZ - START], 0), "empty user-memory");
+    }
 }
 
 // Test disk capabilities
