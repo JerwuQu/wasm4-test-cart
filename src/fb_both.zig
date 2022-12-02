@@ -38,12 +38,12 @@ pub fn text(str: [*]const u8, x: i32, y: i32) void {
 
 pub fn textUtf8(str: []const u8, x: i32, y: i32) void {
     w4.textUtf8(str.ptr, str.len, x, y);
-    crt.textUtf8(str, x, y);
+    crt.textUtf8(str.ptr, str.len, x, y);
 }
 
 pub fn textUtf16(str: []const u16, x: i32, y: i32) void {
-    w4.textUtf16(str.ptr, str.len, x, y);
-    crt.textUtf16(str, x, y);
+    w4.textUtf16(str.ptr, str.len * 2, x, y);
+    crt.textUtf16(str.ptr, str.len * 2, x, y);
 }
 
 pub fn blit(sprite: [*]const u8, x: i32, y: i32, width: u32, height: u32, flags: u32) void {

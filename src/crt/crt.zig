@@ -40,12 +40,12 @@ pub fn text(str: [*]const u8, x: i32, y: i32) void {
     fbC.w4_framebufferText(str, x, y);
 }
 
-pub fn textUtf8(str: []const u8, x: i32, y: i32) void {
-    fbC.w4_framebufferTextUtf8(str.ptr, @intCast(c_int, str.len), x, y);
+pub fn textUtf8(strPtr: [*]const u8, strLen: usize, x: i32, y: i32) void {
+    fbC.w4_framebufferTextUtf8(strPtr, @intCast(c_int, strLen), x, y);
 }
 
-pub fn textUtf16(str: []const u16, x: i32, y: i32) void {
-    fbC.w4_framebufferTextUtf16(str.ptr, @intCast(c_int, str.len), x, y);
+pub fn textUtf16(strPtr: [*]const u16, strLen: usize, x: i32, y: i32) void {
+    fbC.w4_framebufferTextUtf16(strPtr, @intCast(c_int, strLen), x, y);
 }
 
 pub fn blit(sprite: [*]const u8, x: i32, y: i32, width: u32, height: u32, flags: u32) void {

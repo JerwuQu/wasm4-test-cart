@@ -68,7 +68,7 @@ fn test_disk() void {
     var bufOut: [DISK_MAX_2]u8 = undefined;
 
     {
-        const case = "disk, single byte";
+        const case = "disk: single byte";
 
         std.mem.set(u8, &bufIn, BYTE_UNUSED_IN);
         bufIn[0] = BYTE_COPIED;
@@ -81,7 +81,7 @@ fn test_disk() void {
     }
 
     {
-        const case = "disk, full size (1024)";
+        const case = "disk: full size (1024)";
 
         std.mem.set(u8, bufIn[0..DISK_MAX], BYTE_COPIED);
         std.mem.set(u8, bufIn[DISK_MAX..], BYTE_UNUSED_IN);
@@ -94,7 +94,7 @@ fn test_disk() void {
     }
 
     {
-        const case = "disk, oversized (2048)";
+        const case = "disk: oversized (2048)";
 
         std.mem.set(u8, &bufIn, BYTE_COPIED);
         assert(w4.diskw(&bufIn, DISK_MAX_2) == DISK_MAX, case, @src());
@@ -145,7 +145,7 @@ fn test_draw_primitives() void {
                     const y2 = positions[y2i];
                     fb_both.DRAW_COLORS(0x34);
                     fb_both.line(x, y, x2, y2);
-                    assertEqualFBs(bufPrintZ("line {},{} to {},{}", .{x, y, x2, y2}), @src());
+                    assertEqualFBs(bufPrintZ("line: {},{} to {},{}", .{x, y, x2, y2}), @src());
                 }
             }
 
@@ -156,9 +156,9 @@ fn test_draw_primitives() void {
 
                 fb_both.DRAW_COLORS(0x34);
                 fb_both.hline(x, y, w);
-                assertEqualFBs(bufPrintZ("hline {},{} len {}", .{x, y, w}), @src());
+                assertEqualFBs(bufPrintZ("hline: {},{} len {}", .{x, y, w}), @src());
                 fb_both.vline(x, y, w);
-                assertEqualFBs(bufPrintZ("vline {},{} len {}", .{x, y, w}), @src());
+                assertEqualFBs(bufPrintZ("vline: {},{} len {}", .{x, y, w}), @src());
 
                 var hi: usize = 0;
                 while (hi < sizes.len) : (hi += 1) {
@@ -166,15 +166,15 @@ fn test_draw_primitives() void {
 
                     fb_both.DRAW_COLORS(0x4);
                     fb_both.rect(x, y, w, h);
-                    assertEqualFBs(bufPrintZ("rect {},{} {}x{}", .{x, y, w, h}), @src());
+                    assertEqualFBs(bufPrintZ("rect: {},{} {}x{}", .{x, y, w, h}), @src());
                     fb_both.oval(x, y, w, h);
-                    assertEqualFBs(bufPrintZ("oval {},{} {}x{}", .{x, y, w, h}), @src());
+                    assertEqualFBs(bufPrintZ("oval: {},{} {}x{}", .{x, y, w, h}), @src());
 
                     fb_both.DRAW_COLORS(0x34);
                     fb_both.rect(x, y, w, h);
-                    assertEqualFBs(bufPrintZ("rect (outlined) {},{} {}x{}", .{x, y, w, h}), @src());
+                    assertEqualFBs(bufPrintZ("rect (outlined): {},{} {}x{}", .{x, y, w, h}), @src());
                     fb_both.oval(x, y, w, h);
-                    assertEqualFBs(bufPrintZ("oval (outlined) {},{} {}x{}", .{x, y, w, h}), @src());
+                    assertEqualFBs(bufPrintZ("oval (outlined): {},{} {}x{}", .{x, y, w, h}), @src());
                 }
             }
         }
@@ -185,33 +185,83 @@ fn test_draw_primitives() void {
 }
 
 fn test_draw_text() void {
-    // text, textUtf8, textUtf16: all charcodes
     fb_both.DRAW_COLORS(0x34);
-    var i: usize = 0;
-    var textBuf: [2]u8 = .{ 0 } ** 2;
-    var textBuf16: [2]u16 = .{ 0 } ** 2;
-    while (i < 256) : (i += 1) {
-        textBuf[0] = @intCast(u8, i);
-        textBuf16[0] = @intCast(u16, i);
-        fb_both.text(&textBuf, 10, 10);
-        assertEqualFBs(bufPrintZ("text charcode {}", .{i}), @src());
-        fb_both.textUtf8(&textBuf, 10, 10);
-        assertEqualFBs(bufPrintZ("textUtf8 charcode {}", .{i}), @src());
-        fb_both.textUtf16(&textBuf16, 10, 10);
-        assertEqualFBs(bufPrintZ("textUtf16 charcode {}", .{i}), @src());
+
+    // text, textUtf8, textUtf16: all sequentially charcodes
+    {
+        var i: usize = 0;
+        var text8Buf: [2]u8 = .{ 0 } ** 2;
+        var text16Buf: [2]u16 = .{ 0 } ** 2;
+        while (i < 256) : (i += 1) {
+            text8Buf[0] = @intCast(u8, i);
+            text16Buf[0] = @intCast(u16, i);
+            fb_both.text(&text8Buf, 10, 10);
+            assertEqualFBs(bufPrintZ("text: charcode {}", .{i}), @src());
+            fb_both.textUtf8(text8Buf[0..1], 10, 10);
+            assertEqualFBs(bufPrintZ("textUtf8: charcode {}", .{i}), @src());
+            fb_both.textUtf16(text16Buf[0..1], 10, 10);
+            assertEqualFBs(bufPrintZ("textUtf16: charcode {}", .{i}), @src());
+        }
+    }
+
+    // text, textUtf8, textUtf16: newline
+    fb_both.text("A\nB", 10, 10);
+    assertEqualFBs("text: newline", @src());
+    fb_both.textUtf8("A\nB", 10, 10);
+    assertEqualFBs("textUtf8: newline", @src());
+    fb_both.textUtf16(&[3]u16{ 'A', '\n', 'B' }, 10, 10);
+    assertEqualFBs("textUtf16: newline", @src());
+
+    // text, textUtf8, textUtf16: respect null-terminator
+    fb_both.text("A\x00B", 10, 10);
+    assertEqualFBs("text: respect null-terminator", @src());
+    fb_both.textUtf8("A\x00B", 10, 10);
+    assertEqualFBs("textUtf8: respect null-terminator", @src());
+    fb_both.textUtf16(&[3]u16{ 'A', 0, 'B' }, 10, 10);
+    assertEqualFBs("textUtf16: respect null-terminator", @src());
+
+    // text, textUtf8, textUtf16: all charcodes, \n wrapping
+    {
+        var text8Buf: [512]u8 = .{ 0 } ** 512;
+        var text16Buf: [512]u16 = .{ 0 } ** 512;
+        var i: usize = 1;
+        var ai: usize = 0;
+        while (i < 256) : (i += 1) {
+            text8Buf[ai] = @intCast(u8, i);
+            text16Buf[ai] = @intCast(u16, i);
+            ai += 1;
+            if (i % 16 == 0) {
+                text8Buf[ai] = '\n';
+                text16Buf[ai] = '\n';
+                ai += 1;
+            }
+        }
+        fb_both.text(&text8Buf, 10, 10);
+        assertEqualFBs("text: all charcodes, wrapped", @src());
+        fb_both.textUtf8(text8Buf[0..ai], 10, 10);
+        assertEqualFBs("textUtf8: all charcodes, wrapped", @src());
+        fb_both.textUtf16(text16Buf[0..ai], 10, 10);
+        assertEqualFBs("textUtf16: all charcodes, wrapped", @src());
     }
 
     // text: OOB placements
-    fb_both.text("@", -4, -4);
-    assertEqualFBs("text OOB", @src());
-    fb_both.text("@", 156, -4);
-    assertEqualFBs("text OOB", @src());
-    fb_both.text("@", -4, 156);
-    assertEqualFBs("text OOB", @src());
-    fb_both.text("@", 156, 156);
-    assertEqualFBs("text OOB", @src());
+    fb_both.text("@@@@@", -4, -4);
+    assertEqualFBs("text: OOB", @src());
+    fb_both.text("@@@@@", 156, -4);
+    assertEqualFBs("text: OOB", @src());
+    fb_both.text("@@@@@", -4, 156);
+    assertEqualFBs("text: OOB", @src());
+    fb_both.text("@@@@@", 156, 156);
+    assertEqualFBs("text: OOB", @src());
 
-    // TODO: textUtf16, non-valid charcodes
+    // textUtf16, invalid charcodes
+    {
+        var i: usize = 256;
+        while (i < 65536) : (i += 2251) {
+            w4.textUtf16(&[2]u16{ @intCast(u16, i), 0 }, 2, 10, 10);
+            assertEqualFBs(bufPrintZ("textUtf16: invalid charcode {}", .{i}), @src());
+        }
+    }
 }
 
 fn test_draw_blit() void {
