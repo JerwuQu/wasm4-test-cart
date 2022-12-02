@@ -129,7 +129,7 @@ fn test_draw_init() void {
     // Manual set (aka. verify mutability)
     std.mem.set(u8, w4.FRAMEBUFFER, 0xAA);
     std.mem.set(u8, crt.FRAMEBUFFER, 0xAA);
-    assertEqualFBs("FRAMEBUFFER empty on init");
+    assertEqualFBs("mutable FRAMEBUFFER");
 
     // See that FRAMEBUFFER isn't modified by DRAW_COLORS
     std.mem.set(u8, w4.FRAMEBUFFER, 0xAA);
