@@ -55,19 +55,19 @@ fn assertEqualFBs(ctx: []const u8) void {
 // Test initial memory state
 fn test_initial_memory() void {
     // PALETTE
-    assert(w4.PALETTE[0] == 0xe0f8cf, "");
-    assert(w4.PALETTE[1] == 0x86c06c, "");
-    assert(w4.PALETTE[2] == 0x306850, "");
-    assert(w4.PALETTE[3] == 0x071821, "");
+    assert(w4.PALETTE[0] == 0xe0f8cf, "default PALETTE");
+    assert(w4.PALETTE[1] == 0x86c06c, "default PALETTE");
+    assert(w4.PALETTE[2] == 0x306850, "default PALETTE");
+    assert(w4.PALETTE[3] == 0x071821, "default PALETTE");
 
     // DRAW_COLORS
-    assert(w4.DRAW_COLORS.* == 0x1203, "");
+    assert(w4.DRAW_COLORS.* == 0x1203, "default DRAW_COLORS");
 
     // SYSTEM_FLAGS
-    assert(w4.SYSTEM_FLAGS.* == 0, "");
+    assert(w4.SYSTEM_FLAGS.* == 0, "default SYSTEM_FLAGS");
 
     // FRAMEBUFFER
-    assert(std.mem.allEqual(u8, w4.FRAMEBUFFER, 0), "");
+    assert(std.mem.allEqual(u8, w4.FRAMEBUFFER, 0), "empty initial FRAMEBUFFER");
 }
 
 // Test disk capabilities
@@ -124,7 +124,7 @@ fn test_draw_init() void {
     crt.init();
 
     // FRAMEBUFFER empty
-    assert(std.mem.allEqual(u8, w4.FRAMEBUFFER, 0), "");
+    assert(std.mem.allEqual(u8, w4.FRAMEBUFFER, 0), "empty FRAMEBUFFER");
 
     // Manual set (aka. verify mutability)
     std.mem.set(u8, w4.FRAMEBUFFER, 0xAA);
