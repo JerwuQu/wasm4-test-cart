@@ -13,8 +13,9 @@ const TERM_COLOR_BLUE = "\x1b[34m";
 pub const InspectError = error {inspect};
 
 const Test = struct {
-    name: []const u8,
     func: *const fn(*TestState) InspectError!void,
+    shortName: []const u8,
+    isVisual: bool, // If this test primarily uses WASM-4 draw API functions and hence worth inspecting
 };
 
 pub const TestState = struct {
@@ -55,10 +56,22 @@ const tests: []const Test = blk: {
     for (this.decls) |decl| {
         if (decl.is_pub) {
             const field = @field(testsuite, decl.name);
-            btests = btests ++ [_]Test{.{
-                .name = decl.name,
-                .func = field,
-            }};
+            if (!std.mem.startsWith(u8, decl.name, "test_")) {
+                @compileError("Test function doesn't start with `test_`");
+            }
+            if (std.mem.startsWith(u8, decl.name, "test_draw_")) {
+                btests = btests ++ [_]Test{.{
+                    .func = field,
+                    .shortName = decl.name["test_draw_".len..],
+                    .isVisual = true,
+                }};
+            } else {
+                btests = btests ++ [_]Test{.{
+                    .func = field,
+                    .shortName = decl.name["test_".len..],
+                    .isVisual = false,
+                }};
+            }
         }
     }
     break :blk btests;
@@ -76,7 +89,7 @@ var inspectState: union(enum) {
     framebufferView: struct {
         testI: usize,
         number: usize = 0,
-        swapped: bool = false,
+        showingLocal: bool = true,
     }
 } = .{.testMenu = .{}};
 
@@ -100,7 +113,8 @@ export fn start() void {
     var totalFailed: usize = 0;
     for (tests) |*tst, i| {
         testStates[i] = TestState{.tst = tst};
-        w4.tracef(TERM_COLOR_YELLOW ++ "> %s..." ++ TERM_COLOR_RESET, tst.name.ptr);
+        w4.tracef(TERM_COLOR_BLUE ++ "> " ++ TERM_COLOR_YELLOW ++ "%s..." ++ TERM_COLOR_RESET ++ " (%s)",
+            tst.shortName.ptr, (if (tst.isVisual) "drawing API" else "state/logic"));
         tst.func(&testStates[i]) catch unreachable;
         totalPassed += testStates[i].passed;
         totalFailed += testStates[i].failed;
@@ -117,9 +131,9 @@ export fn start() void {
     w4.tracef("Summary:");
     for (testStates) |state| {
         if (state.failed == 0) {
-            w4.tracef("- %s: " ++ TERM_COLOR_GREEN ++ "OK!" ++ TERM_COLOR_RESET ++ " (%d passed)", state.tst.name.ptr, state.passed);
+            w4.tracef("- %s: " ++ TERM_COLOR_GREEN ++ "OK!" ++ TERM_COLOR_RESET ++ " (%d passed)", state.tst.shortName.ptr, state.passed);
         } else {
-            w4.tracef("- %s: " ++ TERM_COLOR_RED ++ "Failed!" ++ TERM_COLOR_RESET ++ " (%d passed, %d failed)", state.tst.name.ptr, state.passed, state.failed);
+            w4.tracef("- %s: " ++ TERM_COLOR_RED ++ "Failed!" ++ TERM_COLOR_RESET ++ " (%d passed, %d failed)", state.tst.shortName.ptr, state.passed, state.failed);
         }
     }
     if (totalFailed == 0) {
@@ -134,6 +148,7 @@ export fn start() void {
 export fn update() void {
     const state = struct {
         var lastPad: u32 = 0;
+        var padHeldForTicks: u32 = 0;
     };
     const pad = w4.GAMEPAD1.*;
     const padPressed = (pad ^ state.lastPad) & pad;
@@ -158,9 +173,7 @@ export fn update() void {
             var di: usize = 0;
             for (tests) |*tst, i| {
                 const failed = testStates[i].failed;
-                // TODO: add `isVisualTest: bool` in `Test` struct?
-                if (std.mem.startsWith(u8, tst.name, "test_draw_") and failed > 0) {
-                    const shortName = tst.name[("test_draw_".len)..];
+                if (tst.isVisual and failed > 0) {
                     if (di == v.index) {
                         w4.DRAW_COLORS.* = 0x0034;
                         if (padPressed & w4.BUTTON_1 != 0) {
@@ -169,7 +182,7 @@ export fn update() void {
                     } else {
                         w4.DRAW_COLORS.* = 0x0004;
                     }
-                    w4.textUtf8Wrap(bufPrintZ("{s} ({})", .{shortName, failed}), 5, @intCast(i32, 15 + 10 * di));
+                    w4.textUtf8Wrap(bufPrintZ("{s} ({})", .{tst.shortName, failed}), 5, @intCast(i32, 15 + 10 * di));
                     di += 1;
                 }
             }
@@ -181,26 +194,32 @@ export fn update() void {
             }
         },
         .assertionInput => |*v| {
-            const failed = testStates[v.testI].failed;
+            const failedAssertions = testStates[v.testI].failed;
             w4.DRAW_COLORS.* = 0x0004;
             w4.text("Choose fail #", 2, 2);
-            w4.text("It will first show\nyour LOCAL version.\nPress \x84/\x85 to swap.", 2, 40);
+            w4.text("It will first show\nyour LOCAL version.\n\nPress \x84/\x85 to swap.\nPress \x81 to back.", 2, 40);
             w4.DRAW_COLORS.* = 0x0034;
-            w4.textUtf8Wrap(bufPrintZ("< {} > / {}", .{v.number + 1, failed}), 8, 16);
+            w4.textUtf8Wrap(bufPrintZ("< {} > / {}", .{v.number + 1, failedAssertions}), 8, 16);
             if (padPressed & w4.BUTTON_LEFT != 0) {
-                v.number = (v.number + failed - 1) % failed;
+                v.number = (v.number + failedAssertions - 1) % failedAssertions;
             }
             if (padPressed & w4.BUTTON_RIGHT != 0) {
-                v.number = (v.number + 1) % failed;
+                v.number = (v.number + 1) % failedAssertions;
             }
-            var skip: usize = if (failed > 500) 5 else 1;
+            var skip: usize = @min(failedAssertions / 10, 1 + state.padHeldForTicks / 5);
             if (pad & w4.BUTTON_DOWN != 0) {
-                v.number = (v.number + failed - skip) % failed;
+                v.number = (v.number + failedAssertions - skip) % failedAssertions;
             }
             if (pad & w4.BUTTON_UP != 0) {
-                v.number = (v.number + skip) % failed;
+                v.number = (v.number + skip) % failedAssertions;
+            }
+            if (pad & (w4.BUTTON_DOWN | w4.BUTTON_UP) != 0) {
+                state.padHeldForTicks += 1;
+            } else {
+                state.padHeldForTicks = 0;
             }
             if (padPressed & w4.BUTTON_1 != 0) {
+                w4.tracef(TERM_COLOR_YELLOW ++ "Loading failed assertion [#%d]..." ++ TERM_COLOR_RESET, v.number + 1);
                 var testState = TestState{
                     .tst = &tests[v.testI],
                     .inspecting = v.number,
@@ -221,7 +240,7 @@ export fn update() void {
             }
         },
         .framebufferView => |*v| {
-            w4.PALETTE[0] = if (v.swapped) 0xe0f8cf else 0xf8e0cf;
+            w4.PALETTE[0] = if (v.showingLocal) 0xf8e0cf else 0xe0f8cf;
             w4.PALETTE[1] = 0x86c06c;
             w4.PALETTE[2] = 0x306850;
             w4.PALETTE[3] = 0x071821;
@@ -233,7 +252,7 @@ export fn update() void {
                     w4.FRAMEBUFFER[i] = crt.FRAMEBUFFER[i];
                     crt.FRAMEBUFFER[i] = swap;
                 }
-                v.swapped = !v.swapped;
+                v.showingLocal = !v.showingLocal;
             }
             if (padPressed & w4.BUTTON_2 != 0) {
                 w4.SYSTEM_FLAGS.* = 0;

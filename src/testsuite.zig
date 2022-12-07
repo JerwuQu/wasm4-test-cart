@@ -86,7 +86,7 @@ pub fn test_disk(ts: *TestState) InspectError!void {
     }
 }
 
-pub fn test_fb_init(ts: *TestState) InspectError!void {
+pub fn test_framebuffer(ts: *TestState) InspectError!void {
     crt.init();
 
     // FRAMEBUFFER empty
@@ -245,19 +245,7 @@ pub fn test_draw_text(ts: *TestState) InspectError!void {
 }
 
 pub fn test_draw_blit(ts: *TestState) InspectError!void {
-    const smiley_1bpp = [8]u8{
-        0b11000011,
-        0b10000001,
-        0b00100100,
-        0b00100100,
-        0b00000000,
-        0b00100100,
-        0b10011001,
-        0b11000011,
-    };
-
-    fb_both.DRAW_COLORS(0x34);
-
+    const positions = [_]i32{-9, -8, -7, -1, 0, 1, 152, 153, 159, 160};
     const blitFlagCombos = [_]u32{
         0,
         w4.BLIT_FLIP_X,
@@ -269,19 +257,60 @@ pub fn test_draw_blit(ts: *TestState) InspectError!void {
         w4.BLIT_ROTATE | w4.BLIT_FLIP_X | w4.BLIT_FLIP_Y,
     };
 
-    for (blitFlagCombos) |flags| {
-        fb_both.blit(&smiley_1bpp, 10, 10, 8, 8, w4.BLIT_1BPP | flags);
-        try ts.assertEqualFBs(bufPrintZ("blit: 1bpp basic, flags: {}", .{flags}));
-        fb_both.blit(&smiley_1bpp, 10, 10, 3, 3, w4.BLIT_1BPP | flags);
-        try ts.assertEqualFBs(bufPrintZ("blit: 1bpp unaligned, flags: {}", .{flags}));
+    const smiley_1bpp = [8]u8{
+        0b11000011,
+        0b10000001,
+        0b00100000,
+        0b00100110,
+        0b00000000,
+        0b00100100,
+        0b10111001,
+        0b11000011,
+    };
+    const smiley_2bpp = [16]u8{
+        0b01010000, 0b00000101,
+        0b01000000, 0b00000001,
+        0b00001100, 0b00000000,
+        0b00001100, 0b00111100,
+        0b00000000, 0b00000000,
+        0b00001000, 0b00100000,
+        0b01001010, 0b10000001,
+        0b01010000, 0b00000101,
+    };
+
+    var pi: usize = 0;
+    while (pi < positions.len) : (pi += 1) {
+        const x = positions[pi];
+        const y = positions[pi];
+        for (blitFlagCombos) |flags| {
+            fb_both.DRAW_COLORS(0x34);
+            fb_both.blit(&smiley_1bpp, x, y, 8, 8, w4.BLIT_1BPP | flags);
+            try ts.assertEqualFBs(bufPrintZ("blit: 1bpp basic, flags: {}", .{flags}));
+            fb_both.blit(&smiley_1bpp, x, y, 5, 5, w4.BLIT_1BPP | flags);
+            try ts.assertEqualFBs(bufPrintZ("blit: 1bpp unaligned, flags: {}", .{flags}));
+            fb_both.blitSub(&smiley_1bpp, x, y, 4, 4, 0, 0, 8, w4.BLIT_1BPP | flags);
+            try ts.assertEqualFBs(bufPrintZ("blitSub: 1bpp top-left, flags: {}", .{flags}));
+            fb_both.blitSub(&smiley_1bpp, x, y, 4, 4, 4, 4, 8, w4.BLIT_1BPP | flags);
+            try ts.assertEqualFBs(bufPrintZ("blitSub: 1bpp bottom-right, flags: {}", .{flags}));
+
+            fb_both.DRAW_COLORS(0x4312);
+            fb_both.blit(&smiley_2bpp, x, y, 8, 8, w4.BLIT_2BPP | flags);
+            try ts.assertEqualFBs(bufPrintZ("blit: 2bpp basic, flags: {}", .{flags}));
+            fb_both.blit(&smiley_2bpp, x, y, 5, 5, w4.BLIT_2BPP | flags);
+            try ts.assertEqualFBs(bufPrintZ("blit: 2bpp unaligned, flags: {}", .{flags}));
+            fb_both.blitSub(&smiley_2bpp, x, y, 4, 4, 0, 0, 8, w4.BLIT_2BPP | flags);
+            try ts.assertEqualFBs(bufPrintZ("blitSub: 2bpp top-left, flags: {}", .{flags}));
+            fb_both.blitSub(&smiley_2bpp, x, y, 4, 4, 4, 4, 8, w4.BLIT_2BPP | flags);
+            try ts.assertEqualFBs(bufPrintZ("blitSub: 2bpp bottom-right, flags: {}", .{flags}));
+        }
     }
 
-    // TODO: blit 2bpp
-    // TODO: blitSub
+    // TODO: buffer overrun blit/blitSub
+    // TODO: OOB blitSub
 }
 
 // Test persistency through `update`
-pub fn test_update_persistance(ts: *TestState) InspectError!void {
+pub fn test_persistance(ts: *TestState) InspectError!void {
     _ = ts;
     // TODO: FRAMEBUFFER persistance with/without SYSTEM_PRESERVE_FRAMEBUFFER
     // TODO: PALETTE persistance
