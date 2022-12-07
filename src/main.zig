@@ -10,10 +10,10 @@ const TERM_COLOR_BLUE = "\x1b[34m";
 
 // This is not actually an error, but used as a convenient way to unroll
 // This gives us the ability to essentially breakpoint and visually inspect what went wrong
-pub const InspectError = error {inspect};
+pub const InspectError = error{inspect};
 
 const Test = struct {
-    func: *const fn(*TestState) InspectError!void,
+    func: *const fn (*TestState) InspectError!void,
     shortName: []const u8,
     isVisual: bool, // If this test primarily uses WASM-4 draw API functions and hence worth inspecting
 };
@@ -78,20 +78,16 @@ const tests: []const Test = blk: {
 };
 var testStates: [tests.len]TestState = undefined;
 
-var inspectState: union(enum) {
-    testMenu: struct {
-        index: usize = 0,
-    },
-    assertionInput: struct {
-        testI: usize,
-        number: usize = 0,
-    },
-    framebufferView: struct {
-        testI: usize,
-        number: usize = 0,
-        showingLocal: bool = true,
-    }
-} = .{.testMenu = .{}};
+var inspectState: union(enum) { testMenu: struct {
+    index: usize = 0,
+}, assertionInput: struct {
+    testI: usize,
+    number: usize = 0,
+}, framebufferView: struct {
+    testI: usize,
+    number: usize = 0,
+    showingLocal: bool = true,
+} } = .{ .testMenu = .{} };
 
 pub fn bufPrintZ(comptime fmt: []const u8, args: anytype) []u8 {
     const state = struct {
@@ -112,9 +108,8 @@ export fn start() void {
     var totalPassed: usize = 0;
     var totalFailed: usize = 0;
     for (tests) |*tst, i| {
-        testStates[i] = TestState{.tst = tst};
-        w4.tracef(TERM_COLOR_BLUE ++ "> " ++ TERM_COLOR_YELLOW ++ "%s..." ++ TERM_COLOR_RESET ++ " (%s)",
-            tst.shortName.ptr, (if (tst.isVisual) "drawing API" else "state/logic"));
+        testStates[i] = TestState{ .tst = tst };
+        w4.tracef(TERM_COLOR_BLUE ++ "> " ++ TERM_COLOR_YELLOW ++ "%s..." ++ TERM_COLOR_RESET ++ " (%s)", tst.shortName.ptr, (if (tst.isVisual) "drawing API" else "state/logic"));
         tst.func(&testStates[i]) catch unreachable;
         totalPassed += testStates[i].passed;
         totalFailed += testStates[i].failed;
@@ -177,12 +172,12 @@ export fn update() void {
                     if (di == v.index) {
                         w4.DRAW_COLORS.* = 0x0034;
                         if (padPressed & w4.BUTTON_1 != 0) {
-                            inspectState = .{.assertionInput = .{.testI = i}};
+                            inspectState = .{ .assertionInput = .{ .testI = i } };
                         }
                     } else {
                         w4.DRAW_COLORS.* = 0x0004;
                     }
-                    w4.textUtf8Wrap(bufPrintZ("{s} ({})", .{tst.shortName, failed}), 5, @intCast(i32, 15 + 10 * di));
+                    w4.textUtf8Wrap(bufPrintZ("{s} ({})", .{ tst.shortName, failed }), 5, @intCast(i32, 15 + 10 * di));
                     di += 1;
                 }
             }
@@ -199,7 +194,7 @@ export fn update() void {
             w4.text("Choose fail #", 2, 2);
             w4.text("It will first show\nyour LOCAL version.\n\nPress \x84/\x85 to swap.\nPress \x81 to back.", 2, 40);
             w4.DRAW_COLORS.* = 0x0034;
-            w4.textUtf8Wrap(bufPrintZ("< {} > / {}", .{v.number + 1, failedAssertions}), 8, 16);
+            w4.textUtf8Wrap(bufPrintZ("< {} > / {}", .{ v.number + 1, failedAssertions }), 8, 16);
             if (padPressed & w4.BUTTON_LEFT != 0) {
                 v.number = (v.number + failedAssertions - 1) % failedAssertions;
             }
@@ -227,16 +222,18 @@ export fn update() void {
                 var ok = false;
                 std.mem.set(u8, w4.FRAMEBUFFER, 0);
                 std.mem.set(u8, crt.FRAMEBUFFER, 0);
-                tests[v.testI].func(&testState) catch {ok = true;};
+                tests[v.testI].func(&testState) catch {
+                    ok = true;
+                };
                 if (!ok) unreachable;
                 w4.SYSTEM_FLAGS.* = w4.SYSTEM_PRESERVE_FRAMEBUFFER;
-                inspectState = .{.framebufferView = .{
+                inspectState = .{ .framebufferView = .{
                     .testI = v.testI,
                     .number = v.number,
-                }};
+                } };
             }
             if (padPressed & w4.BUTTON_2 != 0) {
-                inspectState = .{.testMenu = .{}};
+                inspectState = .{ .testMenu = .{} };
             }
         },
         .framebufferView => |*v| {
@@ -256,10 +253,10 @@ export fn update() void {
             }
             if (padPressed & w4.BUTTON_2 != 0) {
                 w4.SYSTEM_FLAGS.* = 0;
-                inspectState = .{.assertionInput = .{
+                inspectState = .{ .assertionInput = .{
                     .testI = v.testI,
                     .number = v.number,
-                }};
+                } };
             }
         },
     }

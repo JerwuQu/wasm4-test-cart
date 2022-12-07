@@ -27,21 +27,27 @@ pub fn make(step: *std.build.Step) !void {
 
     const infile = self.source.getPath(self.builder);
     const infileExt = std.fs.path.extension(infile);
-    const infileNoExt = infile[0..infile.len - infileExt.len];
+    const infileNoExt = infile[0 .. infile.len - infileExt.len];
     const outfile = std.fs.path.join(self.builder.allocator, &[_][]const u8{
         "zig-out",
         std.fmt.allocPrint(self.builder.allocator, "{s}.opt.wasm", .{
             std.fs.path.basename(infileNoExt),
-        }) catch unreachable
+        }) catch unreachable,
     }) catch unreachable;
 
     _ = try self.builder.execFromStep(&[_][]const u8{
         "wasm-opt",
         "-Oz",
         "--zero-filled-memory",
-        "--dce", "--converge", "--coalesce-locals-learning",
-        "--strip-producers", "--strip-debug", "--strip-dwarf",
-        infile, "-o", outfile
+        "--dce",
+        "--converge",
+        "--coalesce-locals-learning",
+        "--strip-producers",
+        "--strip-debug",
+        "--strip-dwarf",
+        infile,
+        "-o",
+        outfile,
     }, &self.step);
 
     self.output_file.path = outfile;

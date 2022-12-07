@@ -32,7 +32,7 @@ pub fn test_initial_memory(ts: *TestState) InspectError!void {
     {
         const SZ = 65536;
         const START = 32768;
-        try ts.assert(std.mem.allEqual(u8, @intToPtr([*]u8, START)[0..SZ - START], 0), "empty user-memory");
+        try ts.assert(std.mem.allEqual(u8, @intToPtr([*]u8, START)[0 .. SZ - START], 0), "empty user-memory");
     }
 }
 
@@ -105,8 +105,8 @@ pub fn test_framebuffer(ts: *TestState) InspectError!void {
 }
 
 pub fn test_draw_primitives(ts: *TestState) InspectError!void {
-    const positions = [_]i32{-160, -159, -1, 0, 1, 159, 160};
-    const sizes = [_]u32{0, 1, 2, 80, 158, 159, 160, 161};
+    const positions = [_]i32{ -160, -159, -1, 0, 1, 159, 160 };
+    const sizes = [_]u32{ 0, 1, 2, 80, 158, 159, 160, 161 };
 
     // line, hline, vline, rect, oval
     var xi: usize = 0;
@@ -125,7 +125,7 @@ pub fn test_draw_primitives(ts: *TestState) InspectError!void {
                     const y2 = positions[y2i];
                     fb_both.DRAW_COLORS(0x34);
                     fb_both.line(x, y, x2, y2);
-                    try ts.assertEqualFBs(bufPrintZ("line: {},{} to {},{}", .{x, y, x2, y2}));
+                    try ts.assertEqualFBs(bufPrintZ("line: {},{} to {},{}", .{ x, y, x2, y2 }));
                 }
             }
 
@@ -136,9 +136,9 @@ pub fn test_draw_primitives(ts: *TestState) InspectError!void {
 
                 fb_both.DRAW_COLORS(0x34);
                 fb_both.hline(x, y, w);
-                try ts.assertEqualFBs(bufPrintZ("hline: {},{} len {}", .{x, y, w}));
+                try ts.assertEqualFBs(bufPrintZ("hline: {},{} len {}", .{ x, y, w }));
                 fb_both.vline(x, y, w);
-                try ts.assertEqualFBs(bufPrintZ("vline: {},{} len {}", .{x, y, w}));
+                try ts.assertEqualFBs(bufPrintZ("vline: {},{} len {}", .{ x, y, w }));
 
                 var hi: usize = 0;
                 while (hi < sizes.len) : (hi += 1) {
@@ -146,15 +146,15 @@ pub fn test_draw_primitives(ts: *TestState) InspectError!void {
 
                     fb_both.DRAW_COLORS(0x4);
                     fb_both.rect(x, y, w, h);
-                    try ts.assertEqualFBs(bufPrintZ("rect: {},{} {}x{}", .{x, y, w, h}));
+                    try ts.assertEqualFBs(bufPrintZ("rect: {},{} {}x{}", .{ x, y, w, h }));
                     fb_both.oval(x, y, w, h);
-                    try ts.assertEqualFBs(bufPrintZ("oval: {},{} {}x{}", .{x, y, w, h}));
+                    try ts.assertEqualFBs(bufPrintZ("oval: {},{} {}x{}", .{ x, y, w, h }));
 
                     fb_both.DRAW_COLORS(0x34);
                     fb_both.rect(x, y, w, h);
-                    try ts.assertEqualFBs(bufPrintZ("rect (outlined): {},{} {}x{}", .{x, y, w, h}));
+                    try ts.assertEqualFBs(bufPrintZ("rect (outlined): {},{} {}x{}", .{ x, y, w, h }));
                     fb_both.oval(x, y, w, h);
-                    try ts.assertEqualFBs(bufPrintZ("oval (outlined): {},{} {}x{}", .{x, y, w, h}));
+                    try ts.assertEqualFBs(bufPrintZ("oval (outlined): {},{} {}x{}", .{ x, y, w, h }));
                 }
             }
         }
@@ -170,8 +170,8 @@ pub fn test_draw_text(ts: *TestState) InspectError!void {
     // text, textUtf8, textUtf16: all sequentially charcodes
     {
         var i: usize = 0;
-        var text8Buf: [2]u8 = .{ 0 } ** 2;
-        var text16Buf: [2]u16 = .{ 0 } ** 2;
+        var text8Buf: [2]u8 = .{0} ** 2;
+        var text16Buf: [2]u16 = .{0} ** 2;
         while (i < 256) : (i += 1) {
             text8Buf[0] = @intCast(u8, i);
             text16Buf[0] = @intCast(u16, i);
@@ -202,8 +202,8 @@ pub fn test_draw_text(ts: *TestState) InspectError!void {
 
     // text, textUtf8, textUtf16: all charcodes, \n wrapping
     {
-        var text8Buf: [512]u8 = .{ 0 } ** 512;
-        var text16Buf: [512]u16 = .{ 0 } ** 512;
+        var text8Buf: [512]u8 = .{0} ** 512;
+        var text16Buf: [512]u16 = .{0} ** 512;
         var i: usize = 1;
         var ai: usize = 0;
         while (i < 256) : (i += 1) {
@@ -245,7 +245,7 @@ pub fn test_draw_text(ts: *TestState) InspectError!void {
 }
 
 pub fn test_draw_blit(ts: *TestState) InspectError!void {
-    const positions = [_]i32{-9, -8, -7, -1, 0, 1, 152, 153, 159, 160};
+    const positions = [_]i32{ -9, -8, -7, -1, 0, 1, 152, 153, 159, 160 };
     const blitFlagCombos = [_]u32{
         0,
         w4.BLIT_FLIP_X,
